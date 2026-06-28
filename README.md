@@ -34,6 +34,20 @@ While keeping a futuristic look and feel, it strives to maintain a certain level
 
 It might or might not be a joke taken too seriously.
 
+---
+
+## About this fork
+
+This is a personal fork of the (archived) eDEX-UI, focused on turning it into a **cockpit for running LLMs** and on fixing Windows support for modern toolchains. On top of upstream v2.2.8 it adds:
+
+- **LLM cockpit** — a built-in chat panel (toggle with <kbd>Ctrl</kbd>+<kbd>`</kbd>) that talks to a local [Ollama](https://ollama.com) server:
+  - streaming responses, **multiple conversations** persisted to disk, per-chat model selection;
+  - a **guided builder mode** that steers the model through *scope → plan → code* with phase shortcuts, plus copy-to-clipboard on code blocks.
+- **Windows TTY tracking** — the file browser now follows the terminal's working directory on Windows (PowerShell prompt hook, with a PEB fallback for `cmd`), and the foreground process is detected via WMI. No more *"Tracking Failed"*.
+- **Closeable terminal tabs** — middle-click or right-click an extra tab to close it.
+- **Fixed Windows build** for Node 22 / Python 3.13 / Windows 11 SDK (the old `windows-build-tools` path no longer works).
+
+> The LLM panel needs a running Ollama instance. Install a small model first, e.g. `ollama pull qwen2.5:3b`.
 
 ---
 
@@ -84,8 +98,9 @@ Search through the [Issues](https://github.com/GitSquared/edex-ui/issues) to see
 #### Can you disable the keyboard/the filesystem display?
 You can't disable them (yet) but you can hide them. See the `tron-notype` theme.
 #### Why is the file browser saying that "Tracking Failed"? (Windows only)
-On Linux and macOS, eDEX tracks where you're going in your terminal tab to display the content of the current folder on-screen.
-Sadly, this is technically impossible to do on Windows right now, so the file browser reverts back to a "detached" mode. You can still use it to browse files & directories and click on files to input their path in the terminal.
+On Linux and macOS, eDEX tracks where you're going in your terminal tab to display the content of the current folder on-screen. Upstream couldn't do this on Windows, so the file browser fell back to a "detached" mode.
+
+**This fork fixes it:** on Windows the working directory is tracked via a PowerShell prompt hook (with a PEB-read fallback for `cmd`), so the file browser follows your terminal as on the other platforms.
 #### Can this run on a Raspberry Pi / ARM device?
 We provide prebuilt arm64 builds. For other platforms, see [this issue comment](https://github.com/GitSquared/edex-ui/issues/313#issuecomment-443465345), and the thread on issue [#818](https://github.com/GitSquared/edex-ui/issues/818).
 #### Is this repo actively maintained?
@@ -128,11 +143,14 @@ on *nix systems (You'll need the Xcode command line tools on macOS):
 - `npm run install-linux`
 - `npm run start`
 
-on Windows:
-- start cmd or powershell **as administrator**
+on Windows (the upstream `npm run install-windows` is broken on modern Node — use the steps below instead):
+- install **Visual Studio Build Tools** with the *"Desktop development with C++"* workload, e.g.
+  `winget install Microsoft.VisualStudio.2022.BuildTools --override "--quiet --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"`
 - clone the repository
-- `npm run install-windows`
-- `npm run start`
+- `npm install`
+- `cd src && npm install --ignore-scripts && cd ..` (the `--ignore-scripts` avoids node-pty's broken installer on Node 22)
+- from the `src` folder, rebuild the native module against Electron: `npx @electron/rebuild -f -w node-pty`
+- `npm start` — make sure the `ELECTRON_RUN_AS_NODE` env var is **not** set, otherwise Electron launches as plain Node and the window never opens
 
 #### Building
 Note: Due to native modules, you can only build targets for the host OS you are using.
