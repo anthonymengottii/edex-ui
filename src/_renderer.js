@@ -472,6 +472,24 @@ async function initUI() {
             <pre id="terminal3"></pre>
             <pre id="terminal4"></pre>
         </div>`;
+
+    // Allow closing extra terminal tabs (1-4) with middle-click or right-click.
+    for (let i = 1; i <= 4; i++) {
+        let tab = document.getElementById("shell_tab"+i);
+        if (!tab) continue;
+        tab.setAttribute("title", "Middle-click or right-click to close this terminal");
+        tab.addEventListener("auxclick", e => {
+            if (e.button === 1) {
+                e.preventDefault();
+                window.closeShellTab(i);
+            }
+        });
+        tab.addEventListener("contextmenu", e => {
+            e.preventDefault();
+            window.closeShellTab(i);
+        });
+    }
+
     window.term = {
         0: new Terminal({
             role: "client",
@@ -584,6 +602,21 @@ window.focusShellTab = number => {
         });
     }
 };
+
+// Close an extra terminal tab (1-4). Tab 0 is the main shell and cannot be closed.
+// Closing the client socket triggers the backend's ondisconnected handler, which kills
+// the pty and frees the slot, and the client's onclose handler resets the tab to EMPTY.
+window.closeShellTab = number => {
+    if (number > 0 && number <= 4 && window.term[number] !== null && typeof window.term[number] === "object") {
+        window.audioManager.folder.play();
+        try {
+            window.term[number].socket.close();
+        } catch (e) {
+            // socket already closing/closed
+        }
+    }
+};
+
 
 // Settings editor
 window.openSettings = async () => {
