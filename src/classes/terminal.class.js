@@ -354,8 +354,17 @@ class Terminal {
                             // on an injected prompt hook (see spawn below) that writes $PWD to a temp file.
                             if (this._winCwdFile) {
                                 require("fs").readFile(this._winCwdFile, "utf8", (e, data) => {
-                                    if (e !== null || !data.trim()) {
-                                        reject(e || "empty cwd");
+                                    if (e !== null) {
+                                        // The prompt hook hasn't written the file yet (ENOENT) - report the
+                                        // spawn cwd for now instead of rejecting, which would permanently
+                                        // disable tracking and spam the console.
+                                        if (e.code === "ENOENT") {
+                                            resolve(opts.cwd || process.env.PWD);
+                                        } else {
+                                            reject(e);
+                                        }
+                                    } else if (!data.trim()) {
+                                        resolve(opts.cwd || process.env.PWD);
                                     } else {
                                         resolve(data.trim());
                                     }
