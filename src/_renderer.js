@@ -431,6 +431,16 @@ async function initUI() {
     window.mods.globe = new LocationGlobe("mod_column_right");
     window.mods.conninfo = new Conninfo("mod_column_right");
 
+    // LLM chat overlay (toggle with Ctrl+`)
+    window.mods.llm = new LLM();
+    window.toggleLLM = () => window.mods.llm.toggle();
+    window.addEventListener("keydown", e => {
+        if (e.ctrlKey && (e.key === "`" || e.code === "Backquote")) {
+            e.preventDefault();
+            window.toggleLLM();
+        }
+    });
+
     // Fade-in animations
     document.querySelectorAll(".mod_column").forEach(e => {
         e.setAttribute("class", "mod_column activated");

@@ -1,0 +1,163 @@
+/* LLM chat overlay panel */
+section#llm {
+    position: absolute;
+    top: 7vh;
+    left: 19%;
+    width: 62%;
+    height: 74vh;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    padding: 1.4vh 1.4vw;
+    box-sizing: border-box;
+    background: rgba(5, 8, 13, 0.94);
+    color: rgb(var(--color_r), var(--color_g), var(--color_b));
+    font-family: var(--font_main_light);
+    --aug-border-bg: rgba(var(--color_r), var(--color_g), var(--color_b), 0.4);
+    --aug-border-all: 0.13vh;
+    --aug-bl: 1.6vh;
+    --aug-tr: 1.6vh;
+    transition: opacity 0.25s ease;
+}
+
+section#llm.hidden {
+    display: none;
+    pointer-events: none;
+}
+
+/* Header */
+section#llm #llm_header {
+    display: flex;
+    align-items: center;
+    gap: 0.8vw;
+    padding-bottom: 1vh;
+    border-bottom: 0.092vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.3);
+}
+section#llm #llm_header h3 {
+    margin: 0;
+    font-family: var(--font_main);
+    font-size: 2.2vh;
+    letter-spacing: 0.1vw;
+    flex: 1;
+}
+section#llm #llm_header h3 i {
+    opacity: 0.5;
+    font-style: normal;
+    font-size: 1.5vh;
+}
+section#llm select,
+section#llm button {
+    background: transparent;
+    color: rgb(var(--color_r), var(--color_g), var(--color_b));
+    border: 0.092vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.4);
+    font-family: var(--font_main);
+    font-size: 1.5vh;
+    padding: 0.4vh 0.8vw;
+    cursor: pointer;
+    outline: none;
+}
+section#llm select option {
+    background: var(--color_light_black);
+}
+section#llm button:hover {
+    background: rgba(var(--color_r), var(--color_g), var(--color_b), 0.15);
+}
+
+/* Messages */
+section#llm #llm_messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.2vh 0.4vw;
+    display: flex;
+    flex-direction: column;
+    gap: 1vh;
+}
+section#llm .llm_msg {
+    display: flex;
+}
+section#llm .llm_user {
+    justify-content: flex-end;
+}
+section#llm .llm_assistant {
+    justify-content: flex-start;
+}
+section#llm .llm_bubble {
+    max-width: 82%;
+    padding: 0.9vh 1vw;
+    font-size: 1.7vh;
+    line-height: 1.45;
+    word-wrap: break-word;
+    border: 0.092vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.25);
+}
+section#llm .llm_user .llm_bubble {
+    background: rgba(var(--color_r), var(--color_g), var(--color_b), 0.12);
+}
+section#llm .llm_assistant .llm_bubble {
+    background: rgba(var(--color_r), var(--color_g), var(--color_b), 0.04);
+}
+section#llm .llm_bubble.thinking {
+    opacity: 0.6;
+    font-style: italic;
+}
+section#llm .llm_bubble.error {
+    color: var(--color_red);
+    border-color: var(--color_red);
+}
+section#llm .llm_bubble pre {
+    background: var(--color_black);
+    border: 0.092vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.3);
+    padding: 0.8vh 0.8vw;
+    margin: 0.6vh 0;
+    overflow-x: auto;
+    font-family: var(--font_mono);
+    font-size: 1.5vh;
+    white-space: pre;
+}
+section#llm .llm_bubble code {
+    font-family: var(--font_mono);
+    background: rgba(var(--color_r), var(--color_g), var(--color_b), 0.12);
+    padding: 0 0.3vw;
+}
+
+/* Footer / input */
+section#llm #llm_footer {
+    display: flex;
+    align-items: stretch;
+    gap: 0.6vw;
+    padding-top: 1vh;
+    border-top: 0.092vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.3);
+}
+section#llm #llm_input {
+    flex: 1;
+    resize: none;
+    background: var(--color_black);
+    color: rgb(var(--color_r), var(--color_g), var(--color_b));
+    border: 0.092vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.4);
+    font-family: var(--font_mono);
+    font-size: 1.6vh;
+    padding: 0.8vh 0.6vw;
+    outline: none;
+}
+section#llm #llm_input::placeholder {
+    color: rgba(var(--color_r), var(--color_g), var(--color_b), 0.35);
+}
+section#llm #llm_send,
+section#llm #llm_stop {
+    min-width: 6vw;
+    font-size: 1.6vh;
+}
+section#llm #llm_stop {
+    color: var(--color_red);
+    border-color: var(--color_red);
+}
+section#llm .hidden {
+    display: none;
+}
+
+/* Scrollbar */
+section#llm #llm_messages::-webkit-scrollbar {
+    width: 0.5vw;
+}
+section#llm #llm_messages::-webkit-scrollbar-thumb {
+    background: rgba(var(--color_r), var(--color_g), var(--color_b), 0.3);
+}
