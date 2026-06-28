@@ -110,5 +110,9 @@
   },
   "optionalDependencies": {
     "cson-parser": "4.0.9"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^4.0.5",
+    "node-gyp": "^10.3.1"
   }
 }
