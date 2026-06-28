@@ -315,6 +315,18 @@ class Terminal {
             this.ondisconnected = () => {};
 
             this._disableCWDtracking = false;
+            this._winPsRead = script => {
+                return new Promise((resolve, reject) => {
+                    const encoded = Buffer.from(script, "utf16le").toString("base64");
+                    require("child_process").execFile("powershell.exe", ["-NoProfile", "-NonInteractive", "-EncodedCommand", encoded], {windowsHide: true, timeout: 4000}, (e, stdout, stderr) => {
+                        if (e !== null) {
+                            reject(stderr || e);
+                        } else {
+                            resolve(stdout.trim());
+                        }
+                    });
+                });
+            };
             this._getTtyCWD = tty => {
                 return new Promise((resolve, reject) => {
                     let pid = tty._pid;
@@ -337,6 +349,41 @@ class Terminal {
                                 }
                             });
                             break;
+                        case "Windows_NT": {
+                            // PowerShell's Set-Location doesn't update the process PEB cwd, so we rely
+                            // on an injected prompt hook (see spawn below) that writes $PWD to a temp file.
+                            if (this._winCwdFile) {
+                                require("fs").readFile(this._winCwdFile, "utf8", (e, data) => {
+                                    if (e !== null || !data.trim()) {
+                                        reject(e || "empty cwd");
+                                    } else {
+                                        resolve(data.trim());
+                                    }
+                                });
+                                break;
+                            }
+                            // Fallback for cmd.exe and other shells that do update the process cwd:
+                            // read CurrentDirectory straight from the remote process PEB (x64).
+                            const ps = `$ErrorActionPreference='Stop';$tpid=${pid};Add-Type -Namespace EdexW -Name Mem -MemberDefinition @'
+[DllImport("ntdll.dll")] public static extern int NtQueryInformationProcess(IntPtr h,int c,byte[] b,int l,ref int r);
+[DllImport("kernel32.dll")] public static extern IntPtr OpenProcess(int a,bool i,int p);
+[DllImport("kernel32.dll")] public static extern bool ReadProcessMemory(IntPtr h,IntPtr a,byte[] b,int s,ref int r);
+[DllImport("kernel32.dll")] public static extern bool CloseHandle(IntPtr h);
+'@;
+$h=[EdexW.Mem]::OpenProcess(0x410,$false,$tpid);
+if($h -eq [IntPtr]::Zero){throw 'open failed'};
+function ReadMem($a,$s){$b=New-Object byte[] $s;$r=0;[void][EdexW.Mem]::ReadProcessMemory($h,[IntPtr]$a,$b,$s,[ref]$r);return ,$b};
+$pbi=New-Object byte[] 48;$rl=0;[void][EdexW.Mem]::NtQueryInformationProcess($h,0,$pbi,48,[ref]$rl);
+$peb=[BitConverter]::ToInt64($pbi,8);
+$pp=[BitConverter]::ToInt64((ReadMem ($peb+0x20) 8),0);
+$len=[BitConverter]::ToUInt16((ReadMem ($pp+0x38) 2),0);
+$ba=[BitConverter]::ToInt64((ReadMem ($pp+0x40) 8),0);
+$raw=ReadMem $ba $len;
+[void][EdexW.Mem]::CloseHandle($h);
+[Console]::Out.Write([Text.Encoding]::Unicode.GetString($raw).TrimEnd([char]0,[char]92));`;
+                            this._winPsRead(ps).then(out => out.length ? resolve(out) : reject("empty cwd")).catch(reject);
+                            break;
+                        }
                         default:
                             reject("Unsupported OS");
                     }
@@ -356,6 +403,11 @@ class Terminal {
                                 }
                             });
                             break;
+                        case "Windows_NT": {
+                            const ps = `$tpid=${pid};$c=Get-CimInstance Win32_Process -Filter ('ParentProcessId='+$tpid) -ErrorAction SilentlyContinue|Sort-Object CreationDate|Select-Object -Last 1;if($c){$n=$c.Name}else{$p=Get-Process -Id $tpid -ErrorAction SilentlyContinue;if($p){$n=$p.Name+'.exe'}else{$n=''}};[Console]::Out.Write(($n -replace '\\.exe$',''))`;
+                            this._winPsRead(ps).then(out => resolve(out)).catch(reject);
+                            break;
+                        }
                         default:
                             reject("Unsupported OS");
                     }
@@ -413,6 +465,17 @@ class Terminal {
                 cwd: opts.cwd || process.env.PWD,
                 env: opts.env || process.env
             });
+
+            // Windows + PowerShell cwd tracking: Set-Location doesn't move the process cwd, so we
+            // override the prompt to dump $PWD into a temp file that _getTtyCWD reads each tick.
+            this._winCwdFile = null;
+            if (require("os").type() === "Windows_NT" && /powershell|pwsh/i.test(opts.shell || "")) {
+                this._winCwdFile = require("path").join(require("os").tmpdir(), `edex_cwd_${this.port}.txt`);
+                try { require("fs").unlinkSync(this._winCwdFile); } catch(e) { /* nothing to clean */ }
+                const f = this._winCwdFile.replace(/'/g, "''");
+                const initCmd = `function global:prompt { try { [System.IO.File]::WriteAllText('${f}', (Get-Location).Path) } catch {}; "PS " + (Get-Location).Path + "> " }; Clear-Host\r`;
+                this.tty.write(initCmd);
+            }
 
             this.tty.onExit((code, signal) => {
                 this._closed = true;
