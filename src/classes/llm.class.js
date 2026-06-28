@@ -3,6 +3,26 @@
 // renderer (nodeIntegration is on, so require("http") is available). Streams responses
 // token-by-token from POST /api/chat (NDJSON). No API key / main-process proxy yet.
 // Conversations are kept as a list and persisted to disk so they survive restarts.
+
+// Guided builder mode: a system prompt that steers the (weak, local) model through a
+// 3-phase method. The phase buttons explicitly push the model forward so it doesn't
+// have to self-manage the flow.
+const BUILDER_SYSTEM = `Você é um construtor guiado de funcionalidades, trabalhando em fases. Responda SEMPRE em português, de forma concisa, e use blocos \`\`\` para qualquer código.
+
+FASE 1 - ESCOPO: se o objetivo ainda estiver vago, faça poucas perguntas curtas e objetivas para esclarecer requisitos. NÃO planeje nem escreva código ainda.
+
+FASE 2 - PLANO: quando o escopo estiver claro (ou quando pedirem o plano), produza um plano numerado contendo: arquivos a criar/editar, passos em ordem, riscos e como verificar o resultado. Sem código completo ainda.
+
+FASE 3 - CÓDIGO: quando pedirem, gere o código de UM passo do plano por vez, completo e pronto para colar, explicando em 1-2 linhas onde vai.
+
+Avance de fase conforme o usuário pedir.`;
+
+const PHASE_PROMPTS = {
+    plan: "O escopo está claro. Gere agora o PLANO completo: arquivos a criar/editar, passos em ordem, riscos e como verificar.",
+    next: "Gere o código do PRÓXIMO passo do plano, completo e pronto para colar, dizendo onde vai.",
+    review: "Revise o plano atual considerando riscos, simplificações e o que pode dar errado. Sugira melhorias."
+};
+
 class LLM {
     constructor(opts = {}) {
         this.host = opts.host || "127.0.0.1";
@@ -31,8 +51,9 @@ class LLM {
         el.innerHTML = `
             <div id="llm_bg"></div>
             <div id="llm_header">
-                <h1>LLM<i>COCKPIT</i></h1>
+                <h1>LLM<i id="llm_subtitle">COCKPIT</i></h1>
                 <select id="llm_model" title="Model"></select>
+                <button id="llm_mode" title="Toggle guided builder mode"><p>CHAT</p></button>
                 <div id="llm_header_actions">
                     <button id="llm_clear" title="Clear this conversation"><p>CLEAR</p></button>
                     <button id="llm_close" title="Close (Esc)"><p>CLOSE</p></button>
@@ -45,6 +66,12 @@ class LLM {
                 </div>
                 <div id="llm_main">
                     <div id="llm_messages"></div>
+                    <div id="llm_phases">
+                        <span class="llm_phase_label">BUILDER</span>
+                        <button class="llm_phase" data-phase="plan"><p>GERAR PLANO</p></button>
+                        <button class="llm_phase" data-phase="next"><p>PRÓXIMO PASSO</p></button>
+                        <button class="llm_phase" data-phase="review"><p>REVISAR</p></button>
+                    </div>
                     <div id="llm_footer">
                         <textarea id="llm_input" rows="2" placeholder="Ask the model...   [ Enter ] send   [ Shift+Enter ] newline"></textarea>
                         <button id="llm_send"><p>SEND</p></button>
@@ -59,6 +86,7 @@ class LLM {
         this.inputEl = el.querySelector("#llm_input");
         this.modelEl = el.querySelector("#llm_model");
         this.chatlistEl = el.querySelector("#llm_chatlist");
+        this.modeEl = el.querySelector("#llm_mode");
 
         // Wire controls
         el.querySelector("#llm_send").addEventListener("click", () => this.send());
@@ -66,6 +94,17 @@ class LLM {
         el.querySelector("#llm_clear").addEventListener("click", () => this.clear());
         el.querySelector("#llm_close").addEventListener("click", () => this.hide());
         el.querySelector("#llm_new").addEventListener("click", () => this.newChat());
+        this.modeEl.addEventListener("click", () => this.toggleMode());
+        el.querySelectorAll(".llm_phase").forEach(b => {
+            b.addEventListener("click", () => this._phase(b.dataset.phase));
+        });
+        // Copy button on rendered code blocks.
+        this.messagesEl.addEventListener("click", e => {
+            let btn = e.target.closest(".llm_copy");
+            if (!btn) return;
+            let pre = btn.parentElement.querySelector("pre");
+            if (pre) this._copy(pre.innerText, btn);
+        });
         this.modelEl.addEventListener("change", () => {
             this.model = this.modelEl.value;
             let chat = this._activeChat();
@@ -111,6 +150,65 @@ class LLM {
         else this.hide();
     }
 
+    // ---- guided builder mode -------------------------------------------------
+
+    toggleMode() {
+        let chat = this._activeChat();
+        if (!chat) return;
+        chat.mode = (chat.mode === "builder") ? "chat" : "builder";
+        this._updateMode();
+        this._save();
+        if (window.audioManager) window.audioManager.scan.play();
+        this.inputEl.focus();
+    }
+
+    // Reflect the active chat's mode in the UI (toggle label, panel class, phase bar).
+    _updateMode() {
+        let chat = this._activeChat();
+        let builder = !!(chat && chat.mode === "builder");
+        this.el.classList.toggle("builder", builder);
+        this.modeEl.querySelector("p").innerText = builder ? "BUILDER" : "CHAT";
+        let sub = this.el.querySelector("#llm_subtitle");
+        if (sub) sub.innerText = builder ? "BUILDER" : "COCKPIT";
+    }
+
+    _phase(kind) {
+        let text = PHASE_PROMPTS[kind];
+        if (text) this._quick(text);
+    }
+
+    _quick(text) {
+        if (this.streaming) return;
+        this.inputEl.value = text;
+        this.send();
+    }
+
+    _copy(text, btn) {
+        let done = () => {
+            if (!btn) return;
+            let p = btn.querySelector("p") || btn;
+            let old = p.innerText;
+            p.innerText = "COPIED";
+            setTimeout(() => { p.innerText = old; }, 1200);
+        };
+        try {
+            navigator.clipboard.writeText(text).then(done, () => this._copyFallback(text, done));
+        } catch (e) {
+            this._copyFallback(text, done);
+        }
+    }
+    _copyFallback(text, done) {
+        try {
+            let t = document.createElement("textarea");
+            t.value = text;
+            document.body.appendChild(t);
+            t.select();
+            document.execCommand("copy");
+            document.body.removeChild(t);
+            done();
+        } catch (e) { /* clipboard unavailable */ }
+    }
+
     // ---- conversation persistence & management -------------------------------
 
     _load() {
@@ -127,6 +225,7 @@ class LLM {
         if (!this._activeChat()) this.activeId = this.chats[0].id;
         this._renderChatList();
         this._renderConversation();
+        this._updateMode();
     }
 
     _save() {
@@ -146,11 +245,12 @@ class LLM {
 
     newChat() {
         if (this.streaming) this.stop();
-        let chat = {id: this._id(), title: "New chat", model: this.model, messages: [], updated: Date.now()};
+        let chat = {id: this._id(), title: "New chat", model: this.model, mode: "chat", messages: [], updated: Date.now()};
         this.chats.unshift(chat);
         this.activeId = chat.id;
         this._renderChatList();
         this._renderConversation();
+        this._updateMode();
         this._save();
         if (window.audioManager) window.audioManager.folder.play();
         if (this.inputEl) this.inputEl.focus();
@@ -164,6 +264,7 @@ class LLM {
         if (chat && chat.model) { this.model = chat.model; this._selectModel(chat.model); }
         this._renderChatList();
         this._renderConversation();
+        this._updateMode();
         this._save();
         if (window.audioManager) window.audioManager.folder.play();
         this.inputEl.focus();
@@ -279,7 +380,11 @@ class LLM {
 
         this._setStreaming(true);
 
-        let payload = JSON.stringify({model: this.model, messages: chat.messages, stream: true});
+        // In builder mode, prepend the steering system prompt (not stored in history).
+        let outMessages = (chat.mode === "builder")
+            ? [{role: "system", content: BUILDER_SYSTEM}, ...chat.messages]
+            : chat.messages;
+        let payload = JSON.stringify({model: this.model, messages: outMessages, stream: true});
         this.req = require("http").request({
             host: this.host,
             port: this.port,
@@ -377,7 +482,7 @@ class LLM {
             if (i % 2 === 1) {
                 // inside a code fence; strip an optional language tag on the first line
                 let body = part.replace(/^[^\n]*\n/, m => (/^[a-zA-Z0-9_+-]*\s*$/.test(m.trim()) ? "" : m));
-                out += `<pre>${this._esc(body)}</pre>`;
+                out += `<div class="llm_pre_wrap"><button class="llm_copy" title="Copy"><p>COPY</p></button><pre>${this._esc(body)}</pre></div>`;
             } else {
                 let safe = this._esc(part).replace(/`([^`]+)`/g, (m, c) => `<code>${c}</code>`);
                 out += safe.replace(/\n/g, "<br>");

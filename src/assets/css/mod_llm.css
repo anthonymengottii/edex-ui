@@ -71,6 +71,62 @@ section#llm #llm_header_actions {
     gap: 0.7vw;
 }
 
+/* Mode toggle (CHAT / BUILDER) - highlighted solid when builder is active */
+section#llm.builder #llm_mode {
+    background: rgb(var(--color_r), var(--color_g), var(--color_b));
+    color: var(--color_light_black);
+    font-weight: bold;
+}
+section#llm.builder #llm_header h1 > i {
+    opacity: 0.9;
+}
+
+/* Phase action bar - only shown in builder mode */
+section#llm #llm_phases {
+    display: none;
+    align-items: center;
+    gap: 0.6vw;
+    padding: 0.8vh 0.4vw 0 0.4vw;
+}
+section#llm.builder #llm_phases {
+    display: flex;
+}
+section#llm #llm_phases .llm_phase_label {
+    font-family: var(--font_main);
+    font-size: 1.1vh;
+    letter-spacing: 0.18vh;
+    opacity: 0.5;
+    margin-right: 0.2vw;
+}
+section#llm #llm_phases .llm_phase {
+    font-size: 1.25vh;
+    padding: 0.45vh 0.8vw;
+}
+
+/* Copy button on code blocks */
+section#llm .llm_pre_wrap {
+    position: relative;
+}
+section#llm .llm_copy {
+    position: absolute;
+    top: 0.5vh;
+    right: 0.5vw;
+    font-size: 1.1vh;
+    padding: 0.25vh 0.5vw;
+    opacity: 0;
+    transform: none;
+    z-index: 2;
+}
+section#llm .llm_copy > p {
+    transform: none;
+}
+section#llm .llm_pre_wrap:hover .llm_copy {
+    opacity: 0.7;
+}
+section#llm .llm_copy:hover {
+    opacity: 1;
+}
+
 /* Model selector */
 section#llm select#llm_model {
     background: var(--color_light_black);
