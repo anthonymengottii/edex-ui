@@ -124,6 +124,95 @@ section#llm button.hidden {
     display: none;
 }
 
+/* Body: sidebar (chat list) + main (conversation) */
+section#llm #llm_body {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+    gap: 0.8vw;
+}
+section#llm #llm_sidebar {
+    width: 15vw;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 1vh 0.4vw 0 0;
+    border-right: 0.092vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.3);
+    min-height: 0;
+}
+section#llm #llm_new {
+    width: 100%;
+    margin-bottom: 1vh;
+    flex-shrink: 0;
+    transform: none;
+}
+section#llm #llm_new > p {
+    transform: none;
+}
+section#llm #llm_chatlist {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5vh;
+}
+section#llm .llm_chat_item {
+    display: flex;
+    align-items: center;
+    gap: 0.4vw;
+    padding: 0.7vh 0.5vw;
+    cursor: pointer;
+    border-left: 0.18vh solid transparent;
+    background: rgba(var(--color_r), var(--color_g), var(--color_b), 0.04);
+}
+section#llm .llm_chat_item:hover {
+    background: rgba(var(--color_r), var(--color_g), var(--color_b), 0.1);
+}
+section#llm .llm_chat_item.active {
+    background: rgba(var(--color_r), var(--color_g), var(--color_b), 0.16);
+    border-left-color: rgb(var(--color_r), var(--color_g), var(--color_b));
+}
+section#llm .llm_chat_title {
+    flex: 1;
+    margin: 0;
+    font-size: 1.4vh;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+section#llm .llm_chat_time {
+    font-size: 1.1vh;
+    opacity: 0.45;
+    flex-shrink: 0;
+}
+section#llm .llm_chat_del {
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    color: rgb(var(--color_r), var(--color_g), var(--color_b));
+    opacity: 0;
+    font-size: 1.7vh;
+    line-height: 1;
+    padding: 0 0.2vw;
+    cursor: pointer;
+    transform: none;
+}
+section#llm .llm_chat_item:hover .llm_chat_del {
+    opacity: 0.6;
+}
+section#llm .llm_chat_del:hover {
+    opacity: 1;
+    color: var(--color_red);
+    background: transparent;
+}
+section#llm #llm_main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+}
+
 /* Messages area */
 section#llm #llm_messages {
     flex: 1;
