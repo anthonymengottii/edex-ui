@@ -77,6 +77,13 @@ section#llm.builder #llm_mode {
     color: var(--color_light_black);
     font-weight: bold;
 }
+
+/* Style toggle (NORMAL / CONCISO / CAVEMAN) - highlighted when not normal */
+section#llm #llm_style.active {
+    background: rgb(var(--color_r), var(--color_g), var(--color_b));
+    color: var(--color_light_black);
+    font-weight: bold;
+}
 section#llm.builder #llm_header h1 > i {
     opacity: 0.9;
 }

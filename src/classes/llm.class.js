@@ -23,6 +23,15 @@ const PHASE_PROMPTS = {
     review: "Revise o plano atual considerando riscos, simplificações e o que pode dar errado. Sugira melhorias."
 };
 
+// Response style steering. Cycled per conversation; injected as part of the system prompt.
+const STYLE_ORDER = ["normal", "concise", "caveman"];
+const STYLE_LABELS = {normal: "NORMAL", concise: "CONCISO", caveman: "CAVEMAN"};
+const STYLE_PROMPTS = {
+    normal: "",
+    concise: "Seja conciso e direto: sem preâmbulos, sem repetição, sem enrolação. Responda só o essencial, em poucas frases curtas. Mantenha blocos ``` para código. Responda em português.",
+    caveman: "Fale estilo caveman: corte artigos (o/a/um/uns) e palavras de preenchimento (só/realmente/basicamente), use fragmentos curtos, bem cru. Mantenha a precisão técnica e os blocos ``` de código intactos. Responda em português."
+};
+
 class LLM {
     constructor(opts = {}) {
         this.host = opts.host || "127.0.0.1";
@@ -53,6 +62,7 @@ class LLM {
             <div id="llm_header">
                 <h1>LLM<i id="llm_subtitle">COCKPIT</i></h1>
                 <select id="llm_model" title="Model"></select>
+                <button id="llm_style" title="Response style (Normal / Concise / Caveman)"><p>NORMAL</p></button>
                 <button id="llm_mode" title="Toggle guided builder mode"><p>CHAT</p></button>
                 <div id="llm_header_actions">
                     <button id="llm_clear" title="Clear this conversation"><p>CLEAR</p></button>
@@ -87,6 +97,7 @@ class LLM {
         this.modelEl = el.querySelector("#llm_model");
         this.chatlistEl = el.querySelector("#llm_chatlist");
         this.modeEl = el.querySelector("#llm_mode");
+        this.styleEl = el.querySelector("#llm_style");
 
         // Wire controls
         el.querySelector("#llm_send").addEventListener("click", () => this.send());
@@ -95,6 +106,7 @@ class LLM {
         el.querySelector("#llm_close").addEventListener("click", () => this.hide());
         el.querySelector("#llm_new").addEventListener("click", () => this.newChat());
         this.modeEl.addEventListener("click", () => this.toggleMode());
+        this.styleEl.addEventListener("click", () => this.cycleStyle());
         el.querySelectorAll(".llm_phase").forEach(b => {
             b.addEventListener("click", () => this._phase(b.dataset.phase));
         });
@@ -162,7 +174,7 @@ class LLM {
         this.inputEl.focus();
     }
 
-    // Reflect the active chat's mode in the UI (toggle label, panel class, phase bar).
+    // Reflect the active chat's mode + style in the UI.
     _updateMode() {
         let chat = this._activeChat();
         let builder = !!(chat && chat.mode === "builder");
@@ -170,6 +182,30 @@ class LLM {
         this.modeEl.querySelector("p").innerText = builder ? "BUILDER" : "CHAT";
         let sub = this.el.querySelector("#llm_subtitle");
         if (sub) sub.innerText = builder ? "BUILDER" : "COCKPIT";
+
+        let style = (chat && chat.style) || "normal";
+        this.styleEl.querySelector("p").innerText = STYLE_LABELS[style] || "NORMAL";
+        this.styleEl.classList.toggle("active", style !== "normal");
+    }
+
+    cycleStyle() {
+        let chat = this._activeChat();
+        if (!chat) return;
+        let i = STYLE_ORDER.indexOf(chat.style || "normal");
+        chat.style = STYLE_ORDER[(i + 1) % STYLE_ORDER.length];
+        this._updateMode();
+        this._save();
+        if (window.audioManager) window.audioManager.scan.play();
+        this.inputEl.focus();
+    }
+
+    // Combined system prompt for the active chat: builder steering (if on) + style.
+    _systemPrompt(chat) {
+        let parts = [];
+        if (chat.mode === "builder") parts.push(BUILDER_SYSTEM);
+        let style = STYLE_PROMPTS[chat.style || "normal"];
+        if (style) parts.push(style);
+        return parts.length ? parts.join("\n\n") : null;
     }
 
     _phase(kind) {
@@ -245,7 +281,7 @@ class LLM {
 
     newChat() {
         if (this.streaming) this.stop();
-        let chat = {id: this._id(), title: "New chat", model: this.model, mode: "chat", messages: [], updated: Date.now()};
+        let chat = {id: this._id(), title: "New chat", model: this.model, mode: "chat", style: "normal", messages: [], updated: Date.now()};
         this.chats.unshift(chat);
         this.activeId = chat.id;
         this._renderChatList();
@@ -380,9 +416,10 @@ class LLM {
 
         this._setStreaming(true);
 
-        // In builder mode, prepend the steering system prompt (not stored in history).
-        let outMessages = (chat.mode === "builder")
-            ? [{role: "system", content: BUILDER_SYSTEM}, ...chat.messages]
+        // Prepend the steering system prompt (builder + style), not stored in history.
+        let system = this._systemPrompt(chat);
+        let outMessages = system
+            ? [{role: "system", content: system}, ...chat.messages]
             : chat.messages;
         let payload = JSON.stringify({model: this.model, messages: outMessages, stream: true});
         this.req = require("http").request({
