@@ -18,17 +18,20 @@ class LLM {
         el.setAttribute("class", "hidden");
         el.setAttribute("augmented-ui", "bl-clip tr-clip exe");
         el.innerHTML = `
+            <div id="llm_bg"></div>
             <div id="llm_header">
-                <h3>LLM <i>COCKPIT</i></h3>
+                <h1>LLM<i>COCKPIT</i></h1>
                 <select id="llm_model" title="Model"></select>
-                <button id="llm_clear" title="Clear conversation">CLEAR</button>
-                <button id="llm_close" title="Close (Esc)">X</button>
+                <div id="llm_header_actions">
+                    <button id="llm_clear" title="Clear conversation"><p>CLEAR</p></button>
+                    <button id="llm_close" title="Close (Esc)"><p>CLOSE</p></button>
+                </div>
             </div>
             <div id="llm_messages"></div>
             <div id="llm_footer">
-                <textarea id="llm_input" rows="2" placeholder="Ask the model...  (Enter to send, Shift+Enter for newline)"></textarea>
-                <button id="llm_send">SEND</button>
-                <button id="llm_stop" class="hidden">STOP</button>
+                <textarea id="llm_input" rows="2" placeholder="Ask the model...   [ Enter ] send   [ Shift+Enter ] newline"></textarea>
+                <button id="llm_send"><p>SEND</p></button>
+                <button id="llm_stop" class="hidden"><p>STOP</p></button>
             </div>`;
         document.body.appendChild(el);
 

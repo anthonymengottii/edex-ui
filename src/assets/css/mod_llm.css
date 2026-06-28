@@ -1,23 +1,40 @@
-/* LLM chat overlay panel */
+/* LLM chat overlay panel - styled to match the eDEX-UI design language
+   (augmented-ui frame, floating section title, skewed parallelogram buttons). */
 section#llm {
     position: absolute;
-    top: 7vh;
-    left: 19%;
-    width: 62%;
-    height: 74vh;
+    top: 6vh;
+    left: 18.5%;
+    width: 63%;
+    height: 76vh;
     z-index: 50;
     display: flex;
     flex-direction: column;
-    padding: 1.4vh 1.4vw;
+    padding: 1.6vh 1.2vw;
     box-sizing: border-box;
-    background: rgba(5, 8, 13, 0.94);
+    background: transparent;
     color: rgb(var(--color_r), var(--color_g), var(--color_b));
     font-family: var(--font_main_light);
-    --aug-border-bg: rgba(var(--color_r), var(--color_g), var(--color_b), 0.4);
-    --aug-border-all: 0.13vh;
-    --aug-bl: 1.6vh;
-    --aug-tr: 1.6vh;
-    transition: opacity 0.25s ease;
+    letter-spacing: 0.092vh;
+
+    --aug-border: 0.18vh;
+    --aug-border-bg: rgb(var(--color_r), var(--color_g), var(--color_b));
+    --aug-border-opacity: 0.5;
+    --aug-bl: 1.8vh;
+    --aug-tr: 1.8vh;
+}
+
+/* Single controlled backdrop layer (clipped to the panel shape) that fills the
+   panel opaquely so the terminal behind doesn't show through. augmented-ui doesn't
+   paint the element background reliably, so this dedicated layer handles it. */
+section#llm > #llm_bg {
+    position: absolute;
+    inset: 0;
+    background: rgb(5, 8, 13);
+    z-index: 0;
+}
+section#llm > *:not(#llm_bg) {
+    position: relative;
+    z-index: 1;
 }
 
 section#llm.hidden {
@@ -25,52 +42,96 @@ section#llm.hidden {
     pointer-events: none;
 }
 
-/* Header */
+/* Header: panel title + model selector + actions, single compact row in the
+   eDEX panel-header style (title with a dimmed inline subtitle, like netstat). */
 section#llm #llm_header {
     display: flex;
     align-items: center;
-    gap: 0.8vw;
-    padding-bottom: 1vh;
+    gap: 0.9vw;
+    padding: 0.2vh 0 1vh 0;
     border-bottom: 0.092vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.3);
 }
-section#llm #llm_header h3 {
+section#llm #llm_header h1 {
     margin: 0;
     font-family: var(--font_main);
-    font-size: 2.2vh;
-    letter-spacing: 0.1vw;
-    flex: 1;
+    font-weight: normal;
+    font-size: 1.85vh;
+    letter-spacing: 0.18vh;
 }
-section#llm #llm_header h3 i {
-    opacity: 0.5;
+section#llm #llm_header h1 > i {
     font-style: normal;
-    font-size: 1.5vh;
+    font-size: 1.2vh;
+    opacity: 0.5;
+    margin-left: 0.5vw;
+    letter-spacing: 0.092vh;
 }
-section#llm select,
-section#llm button {
-    background: transparent;
+section#llm #llm_header_actions {
+    margin-left: auto;
+    display: flex;
+    gap: 0.7vw;
+}
+
+/* Model selector */
+section#llm select#llm_model {
+    background: var(--color_light_black);
     color: rgb(var(--color_r), var(--color_g), var(--color_b));
     border: 0.092vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.4);
     font-family: var(--font_main);
-    font-size: 1.5vh;
-    padding: 0.4vh 0.8vw;
-    cursor: pointer;
+    font-size: 1.4vh;
+    letter-spacing: 0.092vh;
+    padding: 0.4vh 0.6vw;
     outline: none;
+    cursor: pointer;
 }
-section#llm select option {
+section#llm select#llm_model option {
     background: var(--color_light_black);
 }
+
+/* Skewed parallelogram buttons (eDEX tab/button language) */
+section#llm button {
+    background: var(--color_light_black);
+    color: rgb(var(--color_r), var(--color_g), var(--color_b));
+    border: 0.092vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.5);
+    font-family: var(--font_main);
+    font-size: 1.4vh;
+    letter-spacing: 0.092vh;
+    padding: 0.55vh 1.1vw;
+    cursor: pointer;
+    outline: none;
+    transform: skewX(-18deg);
+    transition: background 0.15s, color 0.15s;
+}
+section#llm button > p {
+    margin: 0;
+    transform: skewX(18deg);
+}
 section#llm button:hover {
-    background: rgba(var(--color_r), var(--color_g), var(--color_b), 0.15);
+    background: rgba(var(--color_r), var(--color_g), var(--color_b), 0.18);
+}
+section#llm button#llm_send {
+    background: rgb(var(--color_r), var(--color_g), var(--color_b));
+    color: var(--color_light_black);
+    font-weight: bold;
+}
+section#llm button#llm_send:hover {
+    background: rgba(var(--color_r), var(--color_g), var(--color_b), 0.8);
+}
+section#llm button#llm_stop {
+    border-color: var(--color_red);
+    color: var(--color_red);
+}
+section#llm button.hidden {
+    display: none;
 }
 
-/* Messages */
+/* Messages area */
 section#llm #llm_messages {
     flex: 1;
     overflow-y: auto;
-    padding: 1.2vh 0.4vw;
+    padding: 1.4vh 0.4vw;
     display: flex;
     flex-direction: column;
-    gap: 1vh;
+    gap: 1.1vh;
 }
 section#llm .llm_msg {
     display: flex;
@@ -81,27 +142,31 @@ section#llm .llm_user {
 section#llm .llm_assistant {
     justify-content: flex-start;
 }
+
+/* Angular bubbles with an accent edge - no rounded corners (eDEX is sharp) */
 section#llm .llm_bubble {
-    max-width: 82%;
+    max-width: 80%;
     padding: 0.9vh 1vw;
-    font-size: 1.7vh;
-    line-height: 1.45;
+    font-size: 1.6vh;
+    line-height: 1.5;
+    letter-spacing: 0.046vh;
     word-wrap: break-word;
-    border: 0.092vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.25);
+    background: var(--color_light_black);
 }
 section#llm .llm_user .llm_bubble {
-    background: rgba(var(--color_r), var(--color_g), var(--color_b), 0.12);
+    border-right: 0.27vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.8);
+    background: rgba(var(--color_r), var(--color_g), var(--color_b), 0.1);
 }
 section#llm .llm_assistant .llm_bubble {
-    background: rgba(var(--color_r), var(--color_g), var(--color_b), 0.04);
+    border-left: 0.27vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.4);
 }
 section#llm .llm_bubble.thinking {
-    opacity: 0.6;
+    opacity: 0.55;
     font-style: italic;
 }
 section#llm .llm_bubble.error {
     color: var(--color_red);
-    border-color: var(--color_red);
+    border-left-color: var(--color_red);
 }
 section#llm .llm_bubble pre {
     background: var(--color_black);
@@ -110,12 +175,13 @@ section#llm .llm_bubble pre {
     margin: 0.6vh 0;
     overflow-x: auto;
     font-family: var(--font_mono);
-    font-size: 1.5vh;
+    font-size: 1.45vh;
+    letter-spacing: 0;
     white-space: pre;
 }
 section#llm .llm_bubble code {
     font-family: var(--font_mono);
-    background: rgba(var(--color_r), var(--color_g), var(--color_b), 0.12);
+    background: rgba(var(--color_r), var(--color_g), var(--color_b), 0.14);
     padding: 0 0.3vw;
 }
 
@@ -124,7 +190,7 @@ section#llm #llm_footer {
     display: flex;
     align-items: stretch;
     gap: 0.6vw;
-    padding-top: 1vh;
+    padding-top: 1.1vh;
     border-top: 0.092vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.3);
 }
 section#llm #llm_input {
@@ -134,30 +200,28 @@ section#llm #llm_input {
     color: rgb(var(--color_r), var(--color_g), var(--color_b));
     border: 0.092vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.4);
     font-family: var(--font_mono);
-    font-size: 1.6vh;
+    font-size: 1.55vh;
     padding: 0.8vh 0.6vw;
     outline: none;
+}
+section#llm #llm_input:focus {
+    border-color: rgba(var(--color_r), var(--color_g), var(--color_b), 0.8);
 }
 section#llm #llm_input::placeholder {
     color: rgba(var(--color_r), var(--color_g), var(--color_b), 0.35);
 }
 section#llm #llm_send,
 section#llm #llm_stop {
-    min-width: 6vw;
-    font-size: 1.6vh;
-}
-section#llm #llm_stop {
-    color: var(--color_red);
-    border-color: var(--color_red);
-}
-section#llm .hidden {
-    display: none;
+    min-width: 6.5vw;
 }
 
 /* Scrollbar */
 section#llm #llm_messages::-webkit-scrollbar {
-    width: 0.5vw;
+    width: 0.45vw;
 }
 section#llm #llm_messages::-webkit-scrollbar-thumb {
     background: rgba(var(--color_r), var(--color_g), var(--color_b), 0.3);
+}
+section#llm #llm_messages::-webkit-scrollbar-track {
+    background: transparent;
 }
