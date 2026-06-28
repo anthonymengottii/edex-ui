@@ -61,12 +61,16 @@ class LLM {
     show() {
         this.el.classList.remove("hidden");
         if (window.audioManager) window.audioManager.expand.play();
+        // Stop the eDEX keyboard from forwarding keystrokes (and stealing focus
+        // back) to the terminal while the chat input is focused.
+        if (window.keyboard) window.keyboard.detach();
         setTimeout(() => this.inputEl.focus(), 50);
     }
     hide() {
         this.el.classList.add("hidden");
         if (window.audioManager) window.audioManager.denied.play();
-        // Return keyboard focus to the active terminal.
+        // Re-link the keyboard and return focus to the active terminal.
+        if (window.keyboard) window.keyboard.attach();
         try { window.term[window.currentTerm].term.focus(); } catch (e) { /* no term */ }
     }
     toggle() {
